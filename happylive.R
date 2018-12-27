@@ -1,6 +1,13 @@
 library(jsonlite)
 library(tidyverse)
 library(stringr)
+install.packages('devtools')
+library(devtools)
+devtools::install_github("haleyjeppson/ggmosaic")
+devtools::install_github("stefanedwards/lemon")
+library(ggmosaic)
+library(lemon)
+
 my.df <- fromJSON("/Users/ryanhuang/Desktop/107-1/business statistics/happyliving/問卷題目.json")
 path = '/Users/ryanhuang/Desktop/107-1/business statistics/happyliving/happylivingdata_allvalid.csv'
 info = read.table(path, header = TRUE, sep = ',',fileEncoding='big5')
@@ -80,6 +87,7 @@ field_info <- as.data.frame(lapply(field_info, unlist)) #將list轉為vector
 field_info <-  field_info[,c(2,1,3,4,5,6,7,8,9,10)]
 field_info <- field_info[order(field_info$response),]
 names(field_info)[names(field_info) == "key"] <- "answered_field"
+write_csv(field_info, path = '/Users/ryanhuang/Desktop/107-1/business statistics/happyliving/field_basicinfo.csv')
 
 ###################################
 #########    EDA Graph    #########
@@ -111,4 +119,24 @@ ggplot(field_info,aes(factor(key), fill = factor(cities))) + geom_bar(stat = 'co
 ggplot(field_info,aes(factor(key), fill = factor(geo))) + geom_bar(stat = 'count',position = 'stack')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ggplot(field_info,aes(factor(key), fill = factor(geo))) + geom_bar(stat = 'count',position = 'fill')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
+#馬賽克圖
+test = read.table('/Users/ryanhuang/Desktop/107-1/business statistics/happyliving/field_basicinfo_portion.csv', header = TRUE, sep = ',')
+attach(test)
+test$gender =  as.factor(test$gender)
+test$cities = as.factor(test$cities)
+test$elderly = as.factor(test$elderly)
+
+mosaicplot(xtabs(response~cities+answered_field+gender+age, data=test), color=TRUE, off = 5,dir='h')
+mosaicplot(xtabs((response~cities+answered_field+gender), data = test), color = TRUE, off = 5,las = 2)
+
+
+?mosaicplot
+ggplot(data = test) +
+  geom_mosaic(aes(weight =response, x = product(gender,answered_field,cities), fill=gender, na.rm=TRUE,offset = 0.1)) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+ggplot(data = test) +
+  geom_mosaic(aes(weight =response, x = product(elderly,gender), fill=gender, na.rm=TRUE,offset = 0.03,)) +
+  facet_grid(answered_field~.) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+?geom_mosaic
 
