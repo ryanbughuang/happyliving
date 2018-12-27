@@ -45,6 +45,20 @@ elderly <- function(x){
   }}
 field_info$elderly = sapply(field_info$age, elderly)
 
+# 將年齡分成四個區間
+elderly2 <- function(x){
+  if (is.na(x)){
+    return(0);
+  }else if (x<=6){
+    return(1)
+  }else if (x<=9){
+    return(2)
+  }else{
+    return(3)
+  }
+}
+field_info$elderly2 = sapply(field_info$age, elderly2)
+
 # 將居住地分為都市vs非都市
 isCity <- function(x){
   citylist = c(1,2,4,8,14,15)
@@ -102,7 +116,7 @@ field_count = data.frame(row.names = NULL,
 a = ggplot(data = field_count, aes(x = reorder(fields, -count), y = count)) 
 a = a + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 a = a + geom_bar(stat = "identity")
-
+a
 #領域v.s age，第一張絕對人數(position = 'stack')、第二張相對比例(position = 'fill')
 ggplot(field_info,aes(factor(key), fill = factor(age))) + geom_bar(stat = 'count',position = 'stack')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ggplot(field_info,aes(factor(key), fill = factor(age))) + geom_bar(stat = 'count',position = 'fill')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
@@ -134,12 +148,50 @@ mosaicplot(xtabs((response~cities+answered_field+gender), data = test), color = 
 ggplot(data = test) +
   geom_mosaic(aes(weight = response, x = product(gender,answered_field,cities), fill=gender, na.rm=TRUE,offset = 0.1)) +
   theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
+ggplot(data = test) +
+  geom_mosaic(aes(weight = response, x = product(elderly,answered_field,gender), fill=elderly, na.rm=TRUE,offset = 0.1)) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
 ggplot(data = test) +
   geom_mosaic(aes(weight = 1, x = product(answered_field,cities), fill=cities, na.rm=TRUE,offset = 0.1)) +
   theme(axis.text.x = element_text(angle = 0, hjust = 1))
+
 ggplot(data = test) +
   geom_mosaic(aes(weight = I(1/response), x = product(elderly,gender), fill=gender, na.rm=TRUE,offset = 0.03,)) +
   facet_grid(answered_field~.) +
   theme(axis.text.x = element_text(angle = 0, hjust = 1))
 ?geom_mosaic
 
+portion2 = read.table('/Users/ryanhuang/Desktop/107-1/business statistics/happyliving/field_basicinfo_portion2.csv',sep=',',header=TRUE)
+portion2$cities <- as.factor(portion2$cities)
+portion2$gender <- as.factor(portion2$gender)
+portion2$livingstatus <- as.factor(portion2$livingstatus)
+portion2$elderly2 <- as.factor(portion2$elderly2)
+n1_table <- glm(response~cities+elderly2*gender+livingstatus+answered_field, data = portion2,family = 'poisson')
+summary(n1_table)
+1-pchisq(deviance(n1_table), df.residual(n1_table))	# small p-value -> model not good
+anova(n1_table,test = 'Chisq')
+
+
+?predict
+n1names <- lapply(portion2[,-6], levels) # omit Freq
+n1_table.pm <- predict(n1_table, expand.grid(n1names), type='response') # poisson means
+n1_table.pm <- matrix(n1_table.pm, ncol=10, byrow=T, dimnames=list(NULL, n1names[[5]]))
+n1_table.pr <- n1_table.pm/apply(n1_table.pm,1,sum)
+
+cbind(expand.grid(n1names[-5]), prob = round(n1_table.pr, 2))
+
+n1_table.fp <- cbind(expand.grid(n1names[c(1:4,5)]), Prob=as.vector(round(n1_table.pr, 2)))
+house.fp <- cbind(expand.grid(hnames[c(2:4,1)]), Prob=as.vector(round(house.pr, 2)))
+
+ftable(xtabs(Prob~cities+gender+elderly2+livingstatus+answered_field, data=n1_table.fp), row.vars=1:2)
+mosaicplot(xtabs(Prob~cities+gender+elderly2+answered_field, data=n1_table.fp), color=TRUE, las = 2,
+           main="Fitted probabilities")
+
+ggplot(data = test) +
+  geom_mosaic(aes(weight = I(1/response), x = product(elderly,gender), fill=gender, na.rm=TRUE,offset = 0.03,)) +
+  facet_grid(answered_field~.) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+?matrix()
+portion2$predicted <- n1_table.pm
