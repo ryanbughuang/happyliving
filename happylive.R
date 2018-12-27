@@ -78,8 +78,8 @@ geo <- function(x){
     return('None')
   }
 }
-county = data.frame(my.df['county']) #json中的code - city 對照表
-county$geo <-  sapply(county$county.id,geo) #將code對照北中南東
+county = data.frame(my.df['county']) #json中的countycode - city 對照表
+county$geo <-  sapply(county$county.id,geo) #將countycode對照北中南東
 #以code對照（field_info的第一行以及county的第一行），將北中南東對應field_info
 field_info <- merge.data.frame(field_info,subset(county,select = c(1,3)),by.x = 1,by.y = 1)
 field_info <- as.data.frame(lapply(field_info, unlist)) #將list轉為vector
@@ -132,10 +132,13 @@ mosaicplot(xtabs((response~cities+answered_field+gender), data = test), color = 
 
 ?mosaicplot
 ggplot(data = test) +
-  geom_mosaic(aes(weight =response, x = product(gender,answered_field,cities), fill=gender, na.rm=TRUE,offset = 0.1)) +
+  geom_mosaic(aes(weight = response, x = product(gender,answered_field,cities), fill=gender, na.rm=TRUE,offset = 0.1)) +
   theme(axis.text.x = element_text(angle = 0, hjust = 1))
 ggplot(data = test) +
-  geom_mosaic(aes(weight =response, x = product(elderly,gender), fill=gender, na.rm=TRUE,offset = 0.03,)) +
+  geom_mosaic(aes(weight = 1, x = product(answered_field,cities), fill=cities, na.rm=TRUE,offset = 0.1)) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1))
+ggplot(data = test) +
+  geom_mosaic(aes(weight = I(1/response), x = product(elderly,gender), fill=gender, na.rm=TRUE,offset = 0.03,)) +
   facet_grid(answered_field~.) +
   theme(axis.text.x = element_text(angle = 0, hjust = 1))
 ?geom_mosaic
