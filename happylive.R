@@ -162,11 +162,11 @@ ggplot(data = test) +
   theme(axis.text.x = element_text(angle = 0, hjust = 1))
 
 ggplot(data = test) +
-  geom_mosaic(aes(weight = 1, x = product(answered_field,cities), fill=cities, na.rm=TRUE,offset = 0.1)) +
+  geom_mosaic(aes(weight = response, x = product(answered_field,cities), fill=cities, na.rm=TRUE,offset = 0.1)) +
   theme(axis.text.x = element_text(angle = 0, hjust = 1))
 
 ggplot(data = test) +
-  geom_mosaic(aes(weight = I(1/response), x = product(elderly,gender), fill=gender, na.rm=TRUE,offset = 0.03,)) +
+  geom_mosaic(aes(weight = response, x = product(elderly,gender), fill=gender, na.rm=TRUE,offset = 0.03,)) +
   facet_grid(answered_field~.) +
   theme(axis.text.x = element_text(angle = 0, hjust = 1))
 
@@ -182,7 +182,7 @@ summary(n1_table)
 1-pchisq(deviance(n1_table), df.residual(n1_table))	# small p-value -> model not good
 anova(n1_table,test = 'Chisq')
 
-### use the model to predict output
+### use the model to predict output ###
 n1names <- lapply(portion2[,-6], levels) # omit Freq
 n1_table.pm <- predict(n1_table, expand.grid(n1names), type='response') # poisson means
 n1_table.pm <- matrix(n1_table.pm, ncol=10, byrow=T, dimnames=list(NULL, n1names[[5]]))
@@ -197,11 +197,6 @@ ftable(xtabs(Prob~cities+gender+elderly2+livingstatus+answered_field, data=n1_ta
 mosaicplot(xtabs(Prob~cities+gender+elderly2+answered_field, data=n1_table.fp), color=TRUE, las = 2,
            main="Fitted probabilities")
 
-ggplot(data = test) +
-  geom_mosaic(aes(weight = 1, x = product(elderly,gender), fill=gender, na.rm=TRUE,offset = 0.03,)) +
-  facet_grid(answered_field~.) +
-  theme(axis.text.x = element_text(angle = 0, hjust = 1))
-?matrix()
 portion2$predicted <- n1_table.pm
 
 
