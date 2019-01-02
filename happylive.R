@@ -45,6 +45,7 @@ elderly <- function(x){
     return(0);
   }}
 field_info$elderly = sapply(field_info$age, elderly)
+info$elderly = sapply(info$age, elderly)
 
 # 將年齡分成四個區間
 elderly2 <- function(x){
@@ -59,7 +60,7 @@ elderly2 <- function(x){
   }
 }
 field_info$elderly2 = sapply(field_info$age, elderly2)
-
+info$elderly2 = sapply(info$age, elderly2)
 # 將居住地分為都市vs非都市
 isCity <- function(x){
   citylist = c(1,2,4,8,14,15)
@@ -70,12 +71,16 @@ isCity <- function(x){
   }else return(0)
 }
 field_info$city = sapply(field_info$countycode,isCity)
+info$city = sapply(info$countycode, isCity)
 # 標記六都
 sixCity <- data_frame(cities = c(1:6),
                       countycode = c(1,2,4,8,14,15))
+
 # 非六都給0
 field_info <- merge.data.frame(field_info,sixCity,by='countycode',all.x = TRUE)
 field_info['cities'][is.na(field_info['cities'])] <- 0
+info <- merge.data.frame(info,sixCity,by='countycode',all.x = TRUE)
+info['cities'][is.na(info['cities'])] <- 0
 
 # 分為北、中、南、東、離島
 geo <- function(x){
@@ -98,7 +103,10 @@ county$geo <-  sapply(county$county.id,geo) #將countycode對照北中南東
 #以code對照（field_info的第一行以及county的第一行），將北中南東對應field_info
 field_info <- merge.data.frame(field_info,subset(county,select = c(1,3)),by.x = 1,by.y = 1)
 field_info <- as.data.frame(lapply(field_info, unlist)) #將list轉為vector
-
+info <- merge.data.frame(info,subset(county,select = c(1,3)),by.x = 1,by.y = 1)
+info <- as.data.frame(lapply(info, unlist)) #將list轉為vector
+write_csv(info, path)
+colnames(info)
 field_info <-  field_info[,c(2,1,3,4,5,6,7,8,9,10)]
 field_info <- field_info[order(field_info$response),]
 names(field_info)[names(field_info) == "key"] <- "answered_field"
