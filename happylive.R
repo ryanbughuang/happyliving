@@ -1,17 +1,18 @@
 library(jsonlite)
 library(tidyverse)
 library(stringr)
-install.packages('devtools')
+#install.packages('devtools')
 library(devtools)
-devtools::install_github("haleyjeppson/ggmosaic")
-devtools::install_github("stefanedwards/lemon")
+#devtools::install_github("haleyjeppson/ggmosaic")
+#devtools::install_github("stefanedwards/lemon")
 library(ggmosaic)
 library(lemon)
+library(reshape2)
 
 my.df <- fromJSON("/Users/ryanhuang/Desktop/107-1/business statistics/happyliving/問卷題目.json")
 path = '/Users/ryanhuang/Desktop/107-1/business statistics/happyliving/happylivingdata_allvalid.csv'
 info = read.table(path, header = TRUE, sep = ',',fileEncoding='big5')
-final_field <-  info[,12:21] #填答者最終選擇的兩個領域
+
 
 
 ###################################
@@ -23,8 +24,8 @@ final_field <-  info[,12:21] #填答者最終選擇的兩個領域
 basic_info = info[,269:279] #只選填答者基本資料
 basic_info = subset(basic_info, select = c(1:3,11)) #只選性別、年齡、住況、住地
 basic_info$response = c(1:68323)
-final_field <-  info[,12:21]
-
+final_field <-  info[,12:21] #填答者最終選擇的兩個領域
+colnames(info)
 a = final_field %>% as_tibble()
 a %>% glimpse()
 field = a %>% mutate(response = row_number()) %>% select(response, everything()) %>%
@@ -102,7 +103,7 @@ field_info <-  field_info[,c(2,1,3,4,5,6,7,8,9,10)]
 field_info <- field_info[order(field_info$response),]
 names(field_info)[names(field_info) == "key"] <- "answered_field"
 write_csv(field_info, path = '/Users/ryanhuang/Desktop/107-1/business statistics/happyliving/field_basicinfo.csv')
-
+field_info = read.table('/Users/ryanhuang/Desktop/107-1/business statistics/happyliving/field_basicinfo.csv', sep = ',',header = TRUE)
 ###################################
 #########    EDA Graph    #########
 ###################################
@@ -116,22 +117,31 @@ field_count = data.frame(row.names = NULL,
 a = ggplot(data = field_count, aes(x = reorder(fields, -count), y = count)) 
 a = a + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 a = a + geom_bar(stat = "identity")
-a
 #領域v.s age，第一張絕對人數(position = 'stack')、第二張相對比例(position = 'fill')
-ggplot(field_info,aes(factor(key), fill = factor(age))) + geom_bar(stat = 'count',position = 'stack')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
-ggplot(field_info,aes(factor(key), fill = factor(age))) + geom_bar(stat = 'count',position = 'fill')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(field_info,aes(factor(answered_field), fill = factor(age))) + geom_bar(stat = 'count',position = 'stack')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(field_info,aes(factor(answered_field), fill = factor(age))) + geom_bar(stat = 'count',position = 'fill')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+?chisq.test
+#領域v.s 年齡分組，第一張絕對人數(position = 'stack')、第二張相對比例(position = 'fill')
+ggplot(field_info,aes(factor(answered_field), fill = factor(elderly2))) + geom_bar(stat = 'count',position = 'stack')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(field_info,aes(factor(answered_field), fill = factor(elderly2))) + geom_bar(stat = 'count',position = 'fill')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+field_names = lapply(field_info[,c(3,11)],unique) #將領域與年齡的值存成list
 
-#領域v.s 是否>65歲，第一張絕對人數(position = 'stack')、第二張相對比例(position = 'fill')
-ggplot(field_info,aes(factor(key), fill = factor(elderly))) + geom_bar(stat = 'count',position = 'stack')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
-ggplot(field_info,aes(factor(key), fill = factor(elderly))) + geom_bar(stat = 'count',position = 'fill')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+### Chisq test for age and field
+age_field = aggregate(response ~ answered_field + elderly2, data = field_info, FUN = length)
+#合併同領域、同年齡的回答，count(length)回答數
+age_field = merge.data.frame(expand.grid(field_names), age_field, by=c('answered_field','elderly2'),all.x = TRUE)
+age_field['response'][is.na(age_field['response'])] <- 0
+age_field[age_field$elderly2>0,]
+chi_age_field = xtabs(response~answered_field+elderly2,data=age_field[age_field$elderly2>0,])
+chisq.test(chi_age_field,correct = F)
 
 #領域v.s 六都，第一張絕對人數(position = 'stack')、第二張相對比例(position = 'fill')
-ggplot(field_info,aes(factor(key), fill = factor(cities))) + geom_bar(stat = 'count',position = 'stack')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
-ggplot(field_info,aes(factor(key), fill = factor(cities))) + geom_bar(stat = 'count',position = 'fill')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(field_info,aes(factor(answered_field), fill = factor(cities))) + geom_bar(stat = 'count',position = 'stack')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(field_info,aes(factor(answered_field), fill = factor(cities))) + geom_bar(stat = 'count',position = 'fill')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 #領域v.s 地理區，第一張絕對人數(position = 'stack')、第二張相對比例(position = 'fill')
-ggplot(field_info,aes(factor(key), fill = factor(geo))) + geom_bar(stat = 'count',position = 'stack')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
-ggplot(field_info,aes(factor(key), fill = factor(geo))) + geom_bar(stat = 'count',position = 'fill')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(field_info,aes(factor(answered_field), fill = factor(geo))) + geom_bar(stat = 'count',position = 'stack')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+ggplot(field_info,aes(factor(answered_field), fill = factor(geo))) + geom_bar(stat = 'count',position = 'fill')+theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 #馬賽克圖
 test = read.table('/Users/ryanhuang/Desktop/107-1/business statistics/happyliving/field_basicinfo_portion.csv', header = TRUE, sep = ',')
@@ -143,8 +153,6 @@ test$elderly = as.factor(test$elderly)
 mosaicplot(xtabs(response~cities+answered_field+gender+age, data=test), color=TRUE, off = 5,dir='h')
 mosaicplot(xtabs((response~cities+answered_field+gender), data = test), color = TRUE, off = 5,las = 2)
 
-
-?mosaicplot
 ggplot(data = test) +
   geom_mosaic(aes(weight = response, x = product(gender,answered_field,cities), fill=gender, na.rm=TRUE,offset = 0.1)) +
   theme(axis.text.x = element_text(angle = 0, hjust = 1))
@@ -161,20 +169,20 @@ ggplot(data = test) +
   geom_mosaic(aes(weight = I(1/response), x = product(elderly,gender), fill=gender, na.rm=TRUE,offset = 0.03,)) +
   facet_grid(answered_field~.) +
   theme(axis.text.x = element_text(angle = 0, hjust = 1))
-?geom_mosaic
 
+
+### GLM Model ###
 portion2 = read.table('/Users/ryanhuang/Desktop/107-1/business statistics/happyliving/field_basicinfo_portion2.csv',sep=',',header=TRUE)
 portion2$cities <- as.factor(portion2$cities)
 portion2$gender <- as.factor(portion2$gender)
 portion2$livingstatus <- as.factor(portion2$livingstatus)
 portion2$elderly2 <- as.factor(portion2$elderly2)
-n1_table <- glm(response~cities+elderly2*gender+livingstatus+answered_field, data = portion2,family = 'poisson')
+n1_table <- glm(response~(cities+elderly2+livingstatus)*answered_field, data = portion2,family = 'poisson')
 summary(n1_table)
 1-pchisq(deviance(n1_table), df.residual(n1_table))	# small p-value -> model not good
 anova(n1_table,test = 'Chisq')
 
-
-?predict
+### use the model to predict output
 n1names <- lapply(portion2[,-6], levels) # omit Freq
 n1_table.pm <- predict(n1_table, expand.grid(n1names), type='response') # poisson means
 n1_table.pm <- matrix(n1_table.pm, ncol=10, byrow=T, dimnames=list(NULL, n1names[[5]]))
@@ -190,8 +198,10 @@ mosaicplot(xtabs(Prob~cities+gender+elderly2+answered_field, data=n1_table.fp), 
            main="Fitted probabilities")
 
 ggplot(data = test) +
-  geom_mosaic(aes(weight = I(1/response), x = product(elderly,gender), fill=gender, na.rm=TRUE,offset = 0.03,)) +
+  geom_mosaic(aes(weight = 1, x = product(elderly,gender), fill=gender, na.rm=TRUE,offset = 0.03,)) +
   facet_grid(answered_field~.) +
   theme(axis.text.x = element_text(angle = 0, hjust = 1))
 ?matrix()
 portion2$predicted <- n1_table.pm
+
+
