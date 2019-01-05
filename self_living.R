@@ -1,3 +1,5 @@
+install.packages('DescTools')
+library(DescTools)
 path = '/Users/ryanhuang/Desktop/107-1/business statistics/happyliving/happylivingdata_allvalid.csv'
 info = read.table(path, header = TRUE, sep = ',')
 info$response = c(1:68320)
@@ -15,29 +17,19 @@ agg_self_living %>% glimpse()
 colnames(agg_self_living)
 attach(agg_self_living)
 
-### 給琮仁做預測model ###
-winney_names <- lapply(winney_glm[,-7], unique) # omit Freq
-winney_glm %>% glimpse()
-winney_glm_pm <- predict(winney_glm_model11, expand.grid(winney_names), type='response') # poisson means
-a = expand.grid(winney_names)
-a$predicted = winney_glm_pm
-glimpse(a)
-merge.data.frame(winney_glm,a,by=c('answered_field','gender','cities','elderly2','geo','livingstatus')) %>% glimpse()
-
-cbind(expand.grid(n1names[-5]), prob = round(n1_table.pr, 2))
-
-mosaicplot(xtabs(response~elderly2+gender+answered_field, data=agg_self_living), color=TRUE, off = 5,dir='h',las = 2)
-
-
 
 ### Moassic ###
+par(mar=c(8.1,4.1,4.1,8.1))
 ggplot(data = agg_self_living) +
-  geom_mosaic(aes(weight = response, x = product(elderly2,gender,cities,answered_field), fill=answered_field, na.rm=TRUE,offset = 0.1)) +
+  geom_mosaic(aes(weight = response, x = product(elderly2,answered_field,livingstatus,gender), fill = elderly2, na.rm=TRUE,offset = 0.1)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 
 ### GLM ###
+# 轉換為glm可以跑的形狀
 winney_glm = aggregate(response ~ answered_field + gender + cities + elderly2 + geo + livingstatus, data = agg_self_living, FUN = length)
+
+# 各種glm model
 winney_glm_model = glm(response ~ answered_field + gender + cities + elderly2 + geo + livingstatus, data = winney_glm, family = 'poisson')
 addterm(winney_glm_model, ~. + answered_field:(gender + cities + elderly2 + geo + livingstatus), test = 'Chisq')
 winney_glm_model2 = update(winney_glm_model, .~. + answered_field:(gender + cities + elderly2 + livingstatus))
@@ -59,11 +51,42 @@ addterm(winney_glm_model9, ~. + gender:elderly2:( geo + livingstatus), test = 'C
 winney_glm_model10 = update(winney_glm_model, .~. + answered_field:(gender + cities + elderly2 + livingstatus) + gender:(elderly2 + geo + livingstatus) + elderly2:(geo + livingstatus) + geo:livingstatus + answered_field:gender:elderly2 + answered_field:gender:livingstatus + answered_field:cities:elderly2 + answered_field:cities:livingstatus + answered_field:elderly2:livingstatus + gender:cities:livingstatus + gender:elderly2:livingstatus)
 addterm(winney_glm_model10, ~. + cities:elderly2:livingstatus, test = 'Chisq')
 winney_glm_model11 = update(winney_glm_model, .~. + answered_field:(gender + cities + elderly2 + livingstatus) + gender:(elderly2 + geo + livingstatus) + elderly2:(geo + livingstatus) + geo:livingstatus + answered_field:gender:elderly2 + answered_field:gender:livingstatus + answered_field:cities:elderly2 + answered_field:cities:livingstatus + answered_field:elderly2:livingstatus + gender:cities:livingstatus + gender:elderly2:livingstatus + cities:elderly2:livingstatus)
-dropterm(winney_glm_model11, test = 'Chisq')
 
-summary(winney_glm_model10)
-anova(winney_glm_model11,test = 'Chisq')
-1-pchisq(deviance(winney_glm_model10), df.residual(winney_glm_model10))
+winney_glm_model12 = update(winney_glm_model, .~. + answered_field:(gender + cities + elderly2 + livingstatus) + gender:(elderly2 + geo + livingstatus) + elderly2:(geo + livingstatus) + geo:livingstatus + gender:cities:livingstatus + gender:elderly2:livingstatus + cities:elderly2:livingstatus)
+
+#dropterm(winney_glm_model11, test = 'Chisq')
+#summary(winney_glm_model13)
+#anova_result = anova(winney_glm_model12,test = 'Chisq')
+#1-pchisq(deviance(winney_glm_model12), df.residual(winney_glm_model12))
+#PseudoR2(winney_glm_model12)
+
+
+### 給琮仁做預測model ###
+winney_names <- lapply(winney_glm[,-7], unique) # omit Freq
+
+winney_glm_pm <- predict(winney_glm_model12, expand.grid(winney_names), type='response') # poisson means
+all_predict = expand.grid(winney_names)
+all_predict$predicted = winney_glm_pm
+all_predict = all_predict[all_predict$elderly2 != 0,] #不預測NA
+all_predict_wide = spread(all_predict,key = 'answered_field',value = 'predicted')
+all_predict_wide$total = apply(all_predict_wide[,c(6:11)],1,sum)
+all_predict_wide_pr = cbind(all_predict_wide[,c(1:5)],all_predict_wide[,c(6:11)]/all_predict_wide[,12])
+
+
+### TP moasic ###
+tp_predict = all_predict[ (all_predict_wide_pr$geo == 'north') & (all_predict_wide_pr$cities == '1'), ]
+
+tp_wide = all_predict_wide_pr[ (all_predict_wide_pr$geo == 'north') & (all_predict_wide_pr$cities == '1'),]
+tp_long = gather(tp_wide, key = "answered_field", value = "predicted", t9_self_living1, t9_self_living2, t9_self_living3, t9_self_living4, t9_self_living5, t9_self_living6)
+
+colnames(tp_wide)
+tp_wide[,c(6:11)] = round(tp_wide[,c(6:11)],2)
+
+mosaicplot(xtabs(predicted~livingstatus+answered_field+gender+elderly2, data=tp_long), color=TRUE, off = 5,dir='h',las = 2)
+
+ggplot(data = tp_long) +
+  geom_mosaic(aes(weight = predicted, x = product(gender,elderly2,answered_field,livingstatus), fill=elderly2, na.rm=TRUE,offset = 0.1)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 
 

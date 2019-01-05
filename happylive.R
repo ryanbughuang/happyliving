@@ -127,7 +127,14 @@ ggplot(field_info,aes(factor(answered_field), fill = factor(elderly2))) + geom_b
 field_names = lapply(field_info[,c(3,11)],unique) #將領域與年齡的值存成list
 
 ### Chisq test for age and field
-age_field = aggregate(response ~ answered_field + elderly2, data = field_info, FUN = length)
+elderly_field = aggregate(response ~ answered_field + elderly, data = field_info, FUN = length)
+elderly_field %>% glimpse()
+pairwise.prop.test(xtabs(response~answered_field+elderly,data= elderly_field))
+
+library(Sleuth2)
+case1902
+xtabs(cbind(Death, Nodeath)~Victim, data = case1902)
+?chisq.test()
 #合併同領域、同年齡的回答，count(length)回答數
 age_field = merge.data.frame(expand.grid(field_names), age_field, by=c('answered_field','elderly2'),all.x = TRUE)
 age_field['response'][is.na(age_field['response'])] <- 0
